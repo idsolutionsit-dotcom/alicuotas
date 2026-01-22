@@ -8,10 +8,13 @@ import { useAuth } from "@/lib/auth";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useRouter } from "next/navigation";
 
+import PayPhoneButton from "@/components/PayPhoneButton";
+
 export default function ResidentDashboard() {
     const { payments, addPayment, loading: storeLoading } = useStore();
     const { user, logout, isLoading: authLoading } = useAuth();
     const [showForm, setShowForm] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState<'manual' | 'online'>('manual');
     const router = useRouter();
 
     // Form State
@@ -93,7 +96,7 @@ export default function ResidentDashboard() {
                 {/* Payment Form ModalOverlay */}
                 {showForm && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="glass card w-full max-w-md relative animate-in zoom-in-95 duration-200 p-8 rounded-xl border border-white/10 bg-slate-900/90 shadow-2xl">
+                        <div className="glass card w-full max-w-md relative animate-in zoom-in-95 duration-200 p-8 rounded-xl border border-white/10 bg-slate-900/90 shadow-2xl overflow-y-auto max-h-[90vh]">
                             <button
                                 onClick={() => setShowForm(false)}
                                 className="absolute top-4 right-4 text-slate-400 hover:text-white"
@@ -103,72 +106,136 @@ export default function ResidentDashboard() {
 
                             <h3 className="text-2xl font-bold text-white mb-6">Registrar Pago</h3>
 
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-slate-300 ml-1">Monto ($)</label>
-                                    <div className="relative">
-                                        <DollarSign className="absolute left-3 top-3 text-slate-400" size={18} />
-                                        <input
-                                            type="number"
-                                            required
-                                            placeholder="0.00"
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
-                                            value={formData.amount}
-                                            onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
+                            <div className="flex gap-4 mb-6">
+                                <button
+                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${paymentMethod === 'manual' ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                                    onClick={() => setPaymentMethod('manual')}
+                                >
+                                    Depósito Bancario
+                                </button>
+                                <button
+                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${paymentMethod === 'online' ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                                    onClick={() => setPaymentMethod('online')}
+                                >
+                                    Pago en Línea
+                                </button>
+                            </div>
 
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-slate-300 ml-1">Fecha de Depósito</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-3 text-slate-400" size={18} />
-                                        <input
-                                            type="date"
-                                            required
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
-                                            value={formData.date}
-                                            onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                        />
+                            {paymentMethod === 'manual' ? (
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-slate-300 ml-1">Monto ($)</label>
+                                        <div className="relative">
+                                            <DollarSign className="absolute left-3 top-3 text-slate-400" size={18} />
+                                            <input
+                                                type="number"
+                                                required
+                                                placeholder="0.00"
+                                                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
+                                                value={formData.amount}
+                                                onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-slate-300 ml-1">Número de Referencia</label>
-                                    <div className="relative">
-                                        <FileText className="absolute left-3 top-3 text-slate-400" size={18} />
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="Ej. REF-12345"
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
-                                            value={formData.reference}
-                                            onChange={e => setFormData({ ...formData, reference: e.target.value })}
-                                        />
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-slate-300 ml-1">Fecha de Depósito</label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-3 top-3 text-slate-400" size={18} />
+                                            <input
+                                                type="date"
+                                                required
+                                                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
+                                                value={formData.date}
+                                                onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium text-slate-300 ml-1">Comprobante (Imagen)</label>
-                                    <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 flex flex-col items-center justify-center text-slate-400 hover:border-sky-500 hover:text-sky-500 transition-colors cursor-pointer bg-slate-800/50">
-                                        <Upload size={32} className="mb-2" />
-                                        <span className="text-xs">Clic para subir (Simulado)</span>
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-slate-300 ml-1">Número de Referencia</label>
+                                        <div className="relative">
+                                            <FileText className="absolute left-3 top-3 text-slate-400" size={18} />
+                                            <input
+                                                type="text"
+                                                required
+                                                placeholder="Ej. REF-12345"
+                                                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
+                                                value={formData.reference}
+                                                onChange={e => setFormData({ ...formData, reference: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="pt-4 flex gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-slate-300 ml-1">Comprobante (Imagen)</label>
+                                        <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 flex flex-col items-center justify-center text-slate-400 hover:border-sky-500 hover:text-sky-500 transition-colors cursor-pointer bg-slate-800/50">
+                                            <Upload size={32} className="mb-2" />
+                                            <span className="text-xs">Clic para subir (Simulado)</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowForm(false)}
+                                            className="flex-1 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button type="submit" className="flex-1 py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition-colors shadow-lg shadow-sky-900/20">
+                                            Enviar Pago
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="bg-sky-500/10 border border-sky-500/20 text-sky-200 p-4 rounded-lg text-sm">
+                                        Ingresa el monto a pagar y presiona el botón para procesar tu pago de forma segura con PayPhone.
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-slate-300 ml-1">Monto a Pagar ($)</label>
+                                        <div className="relative">
+                                            <DollarSign className="absolute left-3 top-3 text-slate-400" size={18} />
+                                            <input
+                                                type="number"
+                                                required
+                                                placeholder="0.00"
+                                                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
+                                                value={formData.amount}
+                                                onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {formData.amount && parseFloat(formData.amount) > 0 && (
+                                        <div className="pt-2">
+                                            <PayPhoneButton
+                                                token={process.env.NEXT_PUBLIC_PAYPHONE_TOKEN || ''}
+                                                storeId={process.env.NEXT_PUBLIC_PAYPHONE_STORE_ID || ''}
+                                                amount={Math.round(parseFloat(formData.amount) * 100)}
+                                                amountWithoutTax={Math.round(parseFloat(formData.amount) * 100)}
+                                                tax={0} // Assuming 0 tax for simplicity, can be calculated if needed
+                                                clientTransactionId={`tx-${Date.now()}`}
+                                                reference={`Pago Alícuota ${new Date().toLocaleDateString()}`}
+                                                email="usuario@ejemplo.com" // Should come from user profile if available
+                                                phoneNumber="0999999999" // Should come from user profile
+                                                documentId="1700000000" // Should come from user profile
+                                            />
+                                        </div>
+                                    )}
+
                                     <button
                                         type="button"
                                         onClick={() => setShowForm(false)}
-                                        className="flex-1 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors"
+                                        className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors mt-4"
                                     >
                                         Cancelar
                                     </button>
-                                    <button type="submit" className="flex-1 py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition-colors shadow-lg shadow-sky-900/20">
-                                        Enviar Pago
-                                    </button>
                                 </div>
-                            </form>
+                            )}
+
                         </div>
                     </div>
                 )}
