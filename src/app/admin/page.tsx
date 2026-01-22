@@ -1,39 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, XCircle, Search, Filter, ShieldCheck, FileText, Calendar, DollarSign, Home as HomeIcon } from "lucide-react";
-import { usePayments, Payment } from "@/lib/store";
+import { ArrowLeft, CheckCircle2, XCircle, Search, Filter, ShieldCheck, FileText, Calendar, DollarSign, Home as HomeIcon, Users, LogOut } from "lucide-react";
+import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import { StatusBadge } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 export default function AdminDashboard() {
-    const { payments, updateStatus, loading } = usePayments();
+    const { payments, updatePaymentStatus, loading: storeLoading, users, complexes } = useStore();
+    const { user, logout, isLoading: authLoading } = useAuth();
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+    const router = useRouter();
 
-    const filteredPayments = payments.filter(p =>
+    useEffect(() => {
+        if (!authLoading && (!user || user.role !== 'admin')) {
+            router.push('/');
+        }
+    }, [user, authLoading, router]);
+
+    if (authLoading || storeLoading || !user) {
+        return <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">Cargando...</div>;
+    }
+
+    const myComplex = complexes.find(c => c.id === user.complexId);
+
+    // Filter payments for this complex
+    const complexPayments = payments.filter(p => p.complexId === user.complexId);
+
+    const filteredPayments = complexPayments.filter(p =>
         filter === 'all' ? true : p.status === filter
     );
 
-    const pendingCount = payments.filter(p => p.status === 'pending').length;
+    const pendingCount = complexPayments.filter(p => p.status === 'pending').length;
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center text-white">Cargando...</div>;
+    // Calculate stats
+    const totalResidents = users.filter(u => u.complexId === user.complexId && u.role === 'resident').length;
+    const monthlyTotal = complexPayments
+        .filter(p => p.status === 'approved') // Only count approved? Or all? Let's say approved.
+        .reduce((sum, p) => sum + p.amount, 0);
 
     return (
-        <div className="min-h-screen p-6 pb-20">
+        <div className="min-h-screen bg-slate-900 p-6 pb-20">
             <header className="max-w-6xl mx-auto flex items-center justify-between mb-8">
-                <Link href="/" className="text-slate-400 hover:text-white flex items-center gap-2 transition-colors">
-                    <ArrowLeft size={20} />
-                    Volver
-                </Link>
                 <div className="flex items-center gap-4">
-                    <div className="text-right">
-                        <h1 className="text-2xl font-bold text-white">Panel Administrador</h1>
-                        <p className="text-slate-400 text-sm">Conjunto Residencial</p>
-                    </div>
                     <div className="bg-purple-500/20 p-3 rounded-full text-purple-400">
                         <ShieldCheck size={24} />
                     </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">Panel Administrador</h1>
+                        <p className="text-slate-400 text-sm">{myComplex?.name || 'Conjunto'}</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <span className="text-sm text-slate-300 hidden md:inline">Hola, {user.name}</span>
+                    <button
+                        onClick={logout}
+                        className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+                        title="Cerrar sesión"
+                    >
+                        <LogOut size={20} />
+                    </button>
                 </div>
             </header>
 
@@ -53,8 +83,8 @@ export default function AdminDashboard() {
 
                     <div className="glass-card flex items-center justify-between relative overflow-hidden group">
                         <div>
-                            <h3 className="text-slate-400 text-sm font-medium">Recaudado (Mes)</h3>
-                            <p className="text-4xl font-bold text-white mt-2">$3,450</p>
+                            <h3 className="text-slate-400 text-sm font-medium">Recaudado (Total)</h3>
+                            <p className="text-4xl font-bold text-white mt-2">${monthlyTotal.toFixed(2)}</p>
                         </div>
                         <div className="bg-emerald-500/10 p-4 rounded-full text-emerald-500">
                             <DollarSign size={32} />
@@ -62,16 +92,18 @@ export default function AdminDashboard() {
                         <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
                     </div>
 
-                    <div className="glass-card flex items-center justify-between relative overflow-hidden group">
-                        <div>
-                            <h3 className="text-slate-400 text-sm font-medium">Total Residentes</h3>
-                            <p className="text-4xl font-bold text-white mt-2">24</p>
+                    <Link href="/admin/residents" className="block h-full">
+                        <div className="glass-card flex items-center justify-between relative overflow-hidden group h-full cursor-pointer hover:border-sky-500/50 transition-colors">
+                            <div>
+                                <h3 className="text-slate-400 text-sm font-medium">Residentes</h3>
+                                <p className="text-4xl font-bold text-white mt-2">{totalResidents}</p>
+                            </div>
+                            <div className="bg-sky-500/10 p-4 rounded-full text-sky-500">
+                                <Users size={32} />
+                            </div>
+                            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-sky-500/10 rounded-full blur-2xl group-hover:bg-sky-500/20 transition-colors"></div>
                         </div>
-                        <div className="bg-sky-500/10 p-4 rounded-full text-sky-500">
-                            <HomeIcon size={32} />
-                        </div>
-                        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-sky-500/10 rounded-full blur-2xl group-hover:bg-sky-500/20 transition-colors"></div>
-                    </div>
+                    </Link>
                 </div>
 
                 {/* Filters */}
@@ -119,7 +151,7 @@ export default function AdminDashboard() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">
-                                                        {payment.houseNumber.split('-')[1]}
+                                                        {payment.houseNumber?.split('-')[1] || payment.houseNumber}
                                                     </div>
                                                     <div>
                                                         <p className="font-medium text-white">{payment.residentName}</p>
@@ -149,14 +181,14 @@ export default function AdminDashboard() {
                                                 {payment.status === 'pending' && (
                                                     <div className="flex justify-end gap-2">
                                                         <button
-                                                            onClick={() => updateStatus(payment.id, 'approved')}
+                                                            onClick={() => updatePaymentStatus(payment.id, 'approved')}
                                                             className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors"
                                                             title="Aprobar"
                                                         >
                                                             <CheckCircle2 size={18} />
                                                         </button>
                                                         <button
-                                                            onClick={() => updateStatus(payment.id, 'rejected')}
+                                                            onClick={() => updatePaymentStatus(payment.id, 'rejected')}
                                                             className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-colors"
                                                             title="Rechazar"
                                                         >

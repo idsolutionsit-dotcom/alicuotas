@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Upload, DollarSign, Calendar, FileText, Home as HomeIcon } from "lucide-react";
-import { usePayments, Payment } from "@/lib/store";
+import { ArrowLeft, Plus, Upload, DollarSign, Calendar, FileText, Home as HomeIcon, LogOut } from "lucide-react";
+import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import { StatusBadge } from "@/components/StatusBadge";
+import { useRouter } from "next/navigation";
 
 export default function ResidentDashboard() {
-    const { payments, addPayment, loading } = usePayments();
+    const { payments, addPayment, loading: storeLoading } = useStore();
+    const { user, logout, isLoading: authLoading } = useAuth();
     const [showForm, setShowForm] = useState(false);
+    const router = useRouter();
 
     // Form State
     const [formData, setFormData] = useState({
@@ -16,6 +20,18 @@ export default function ResidentDashboard() {
         date: new Date().toISOString().split('T')[0],
         reference: "",
     });
+
+    useEffect(() => {
+        if (!authLoading && (!user || user.role !== 'resident')) {
+            router.push('/');
+        }
+    }, [user, authLoading, router]);
+
+    if (authLoading || storeLoading || !user) {
+        return <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">Cargando...</div>;
+    }
+
+    const myPayments = payments.filter(p => p.userId === user.id);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -25,31 +41,37 @@ export default function ResidentDashboard() {
             amount: parseFloat(formData.amount),
             date: formData.date,
             reference: formData.reference,
-            residentName: "Juan Pérez", // Mocked current user
-            houseNumber: "A-101",
+            userId: user.id,
+            complexId: user.complexId!,
+            residentName: user.name,
+            houseNumber: user.houseNumber || "N/A",
         });
 
         setShowForm(false);
         setFormData({ amount: "", date: new Date().toISOString().split('T')[0], reference: "" });
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center text-white">Cargando...</div>;
-
     return (
-        <div className="min-h-screen p-6 pb-20">
+        <div className="min-h-screen bg-slate-900 p-6 pb-20">
             <header className="max-w-4xl mx-auto flex items-center justify-between mb-8">
-                <Link href="/" className="text-slate-400 hover:text-white flex items-center gap-2 transition-colors">
-                    <ArrowLeft size={20} />
-                    Volver
-                </Link>
                 <div className="flex items-center gap-4">
-                    <div className="text-right">
-                        <h1 className="text-2xl font-bold text-white">Hola, Juan</h1>
-                        <p className="text-slate-400 text-sm">Casa A-101</p>
-                    </div>
                     <div className="bg-sky-500/20 p-3 rounded-full text-sky-400">
                         <HomeIcon size={24} />
                     </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">Hola, {user.name}</h1>
+                        <p className="text-slate-400 text-sm">Casa {user.houseNumber}</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={logout}
+                        className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+                        title="Cerrar sesión"
+                    >
+                        <LogOut size={20} />
+                    </button>
                 </div>
             </header>
 
@@ -61,7 +83,7 @@ export default function ResidentDashboard() {
                     </h2>
                     <button
                         onClick={() => setShowForm(true)}
-                        className="btn-primary flex items-center gap-2"
+                        className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-lg shadow-sky-900/20"
                     >
                         <Plus size={20} />
                         Nuevo Pago
@@ -70,13 +92,13 @@ export default function ResidentDashboard() {
 
                 {/* Payment Form ModalOverlay */}
                 {showForm && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <div className="glass-card w-full max-w-md relative animate-in zoom-in-95 duration-200">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="glass card w-full max-w-md relative animate-in zoom-in-95 duration-200 p-8 rounded-xl border border-white/10 bg-slate-900/90 shadow-2xl">
                             <button
                                 onClick={() => setShowForm(false)}
                                 className="absolute top-4 right-4 text-slate-400 hover:text-white"
                             >
-                                <ArrowLeft size={24} className="rotate-180" /> {/* Using arrow as close for style or X */}
+                                <ArrowLeft size={24} className="rotate-180" />
                             </button>
 
                             <h3 className="text-2xl font-bold text-white mb-6">Registrar Pago</h3>
@@ -85,12 +107,12 @@ export default function ResidentDashboard() {
                                 <div className="space-y-1">
                                     <label className="text-sm font-medium text-slate-300 ml-1">Monto ($)</label>
                                     <div className="relative">
-                                        <DollarSign className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                                        <DollarSign className="absolute left-3 top-3 text-slate-400" size={18} />
                                         <input
                                             type="number"
                                             required
                                             placeholder="0.00"
-                                            className="glass-input w-full pl-10"
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
                                             value={formData.amount}
                                             onChange={e => setFormData({ ...formData, amount: e.target.value })}
                                         />
@@ -100,11 +122,11 @@ export default function ResidentDashboard() {
                                 <div className="space-y-1">
                                     <label className="text-sm font-medium text-slate-300 ml-1">Fecha de Depósito</label>
                                     <div className="relative">
-                                        <Calendar className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                                        <Calendar className="absolute left-3 top-3 text-slate-400" size={18} />
                                         <input
                                             type="date"
                                             required
-                                            className="glass-input w-full pl-10" // standard date picker style
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
                                             value={formData.date}
                                             onChange={e => setFormData({ ...formData, date: e.target.value })}
                                         />
@@ -114,12 +136,12 @@ export default function ResidentDashboard() {
                                 <div className="space-y-1">
                                     <label className="text-sm font-medium text-slate-300 ml-1">Número de Referencia</label>
                                     <div className="relative">
-                                        <FileText className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                                        <FileText className="absolute left-3 top-3 text-slate-400" size={18} />
                                         <input
                                             type="text"
                                             required
                                             placeholder="Ej. REF-12345"
-                                            className="glass-input w-full pl-10"
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
                                             value={formData.reference}
                                             onChange={e => setFormData({ ...formData, reference: e.target.value })}
                                         />
@@ -128,7 +150,7 @@ export default function ResidentDashboard() {
 
                                 <div className="space-y-1">
                                     <label className="text-sm font-medium text-slate-300 ml-1">Comprobante (Imagen)</label>
-                                    <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 flex flex-col items-center justify-center text-slate-400 hover:border-sky-500 hover:text-sky-500 transition-colors cursor-pointer bg-white/5">
+                                    <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 flex flex-col items-center justify-center text-slate-400 hover:border-sky-500 hover:text-sky-500 transition-colors cursor-pointer bg-slate-800/50">
                                         <Upload size={32} className="mb-2" />
                                         <span className="text-xs">Clic para subir (Simulado)</span>
                                     </div>
@@ -138,11 +160,11 @@ export default function ResidentDashboard() {
                                     <button
                                         type="button"
                                         onClick={() => setShowForm(false)}
-                                        className="btn-secondary flex-1"
+                                        className="flex-1 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors"
                                     >
                                         Cancelar
                                     </button>
-                                    <button type="submit" className="btn-primary flex-1">
+                                    <button type="submit" className="flex-1 py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition-colors shadow-lg shadow-sky-900/20">
                                         Enviar Pago
                                     </button>
                                 </div>
@@ -153,13 +175,13 @@ export default function ResidentDashboard() {
 
                 {/* Payments List */}
                 <div className="grid gap-4">
-                    {payments.length === 0 ? (
-                        <div className="text-center py-20 text-slate-500 glass rounded-xl">
+                    {myPayments.length === 0 ? (
+                        <div className="text-center py-20 text-slate-500 glass card rounded-xl border border-white/5">
                             No hay pagos registrados aún.
                         </div>
                     ) : (
-                        payments.map((payment) => (
-                            <div key={payment.id} className="glass p-6 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/5 transition-colors group">
+                        myPayments.map((payment) => (
+                            <div key={payment.id} className="glass card p-6 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/5 transition-colors group border border-white/5">
                                 <div className="flex items-start gap-4">
                                     <div className="bg-slate-700/50 p-3 rounded-full text-slate-300 group-hover:bg-sky-500/20 group-hover:text-sky-400 transition-colors">
                                         <DollarSign size={24} />
